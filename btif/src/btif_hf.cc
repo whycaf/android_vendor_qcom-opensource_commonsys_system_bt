@@ -51,6 +51,7 @@
 #include "osi/include/properties.h"
 #include <cutils/properties.h>
 #include "device/include/controller.h"
+#include "btif_storage.h"
 
 namespace bluetooth {
 namespace headset {
@@ -491,6 +492,8 @@ static void btif_hf_upstreams_evt(uint16_t event, char* p_param) {
       break;
 
     case BTA_AG_OPEN_EVT:
+      BTIF_TRACE_DEBUG("%s:p_data->open.status:%d,btif_hf_cb[idx].state:%d,btif_max_hf_clients:%d",
+                         __func__, p_data->open.status, btif_hf_cb[idx].state, btif_max_hf_clients);
       if (p_data->open.status == BTA_AG_SUCCESS) {
         btif_hf_cb[idx].connected_bda = p_data->open.bd_addr;
         btif_hf_cb[idx].state = BTHF_CONNECTION_STATE_CONNECTED;
@@ -522,6 +525,7 @@ static void btif_hf_upstreams_evt(uint16_t event, char* p_param) {
       }
       if (ignore_rfc_fail != true)
       {
+        VLOG(1) << __func__ << "btif_hf_cb[idx].connected_bda:" << btif_hf_cb[idx].connected_bda;
         HAL_HF_CBACK(bt_hf_callbacks, ConnectionStateCallback, btif_hf_cb[idx].state,
               &btif_hf_cb[idx].connected_bda);
       }
@@ -921,6 +925,17 @@ static bt_status_t connect_int(RawAddress* bd_addr, uint16_t uuid) {
         "%s: Cannot connect %s: maximum %d clients already connected", __func__,
         bd_addr->ToString().c_str(), btif_max_hf_clients);
     return BT_STATUS_BUSY;
+  }
+
+  if (!btif_storage_is_device_bonded(bd_addr)) {
+    BTIF_TRACE_WARNING("HF %s()## connect_int ## Device Not Bonded %s \n", __func__,
+                         bd_addr->ToString().c_str());
+    btif_hf_cb[i].state = BTHF_CONNECTION_STATE_DISCONNECTED;
+    /* inform the application of the disconnection as the connection is not processed */
+    HAL_HF_CBACK(bt_hf_callbacks, ConnectionStateCallback, btif_hf_cb[i].state,
+                  bd_addr);
+    btif_queue_advance();
+    return BT_STATUS_SUCCESS;
   }
 
   if (is_connected(bd_addr)) {

@@ -2833,7 +2833,7 @@ static bt_status_t init_src(
   BTIF_TRACE_EVENT("%s() with max conn = %d", __func__, max_a2dp_connections);
   char value[PROPERTY_VALUE_MAX] = {'\0'};
 
-  osi_property_get("persist.vendor.bt.enable.splita2dp", value, "false");
+  osi_property_get("persist.vendor.bt.enable.splita2dp", value, "true");
   BTIF_TRACE_ERROR("split_a2dp_status = %s",value);
   bt_split_a2dp_enabled = (strcmp(value, "true") == 0);
   BTIF_TRACE_ERROR("split_a2dp_status = %d",bt_split_a2dp_enabled);
@@ -3065,6 +3065,15 @@ static bt_status_t connect_int(RawAddress* bd_addr, uint16_t uuid) {
   connect_req.uuid = uuid;
   BTIF_TRACE_EVENT("%s", __func__);
 
+  if (!btif_storage_is_device_bonded(bd_addr))
+  {
+    BTIF_TRACE_WARNING("%s()## connect_int ## Device Not Bonded %s \n", __func__,
+                      bd_addr->ToString().c_str());
+    /* inform the application of the disconnection as the connection is not processed */
+    btif_report_connection_state(BTAV_CONNECTION_STATE_DISCONNECTED, bd_addr);
+    btif_queue_advance();
+    return BT_STATUS_SUCCESS;
+  }
   for (i = 0; i < btif_max_av_clients;) {
     if (btif_av_get_valid_idx(i)) {
       if (*bd_addr == btif_av_cb[i].peer_bda) {
@@ -3959,7 +3968,7 @@ bool btif_av_is_scrambling_enabled() {
   A2dpCodecs* a2dp_codecs = bta_av_get_a2dp_codecs();
   if (a2dp_codecs == nullptr) return false;
 
-  osi_property_get("persist.vendor.bt.splita2dp.44_1_war", value, "false");
+  osi_property_get("persist.vendor.bt.splita2dp.44_1_war", value, "true");
 
   if(strcmp(value, "true")) {
     BTIF_TRACE_WARNING(
