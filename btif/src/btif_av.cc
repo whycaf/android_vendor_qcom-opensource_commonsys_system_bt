@@ -28,7 +28,7 @@
 
 #include <hardware/bluetooth.h>
 #include <hardware/bt_av.h>
-#include <hardware/bt_rc.h>
+#include <hardware/bt_rc_ext.h>
 
 #include "audio_a2dp_hw/include/audio_a2dp_hw.h"
 #include "bt_common.h"
@@ -1148,6 +1148,7 @@ static bool btif_av_state_closing_handler(btif_sm_event_t event, void* p_data, i
             //Flush and close media channel
             btif_a2dp_source_set_tx_flush(true);
             btif_a2dp_source_stop_audio_req();
+            btif_a2dp_on_stopped(NULL);
           }
         } else {
           /* immediately flush any pending tx frames while suspend is pending */
@@ -3531,7 +3532,7 @@ bt_status_t btif_av_execute_service(bool b_enable) {
   tBTA_AV_FEAT feat_delay_rpt = 0;
   BTIF_TRACE_DEBUG("%s(): enable: %d", __func__, b_enable);
   if (b_enable) {
-    osi_property_get("persist.bluetooth.enabledelayreports", value, "false");
+    osi_property_get("persist.bluetooth.enabledelayreports", value, "true");
     delay_report_enabled = (strcmp(value, "true") == 0);
     if (delay_report_enabled)
       feat_delay_rpt = BTA_AV_FEAT_DELAY_RPT;
